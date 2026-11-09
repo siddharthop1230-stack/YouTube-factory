@@ -1,0 +1,29 @@
+name: YouTube Factory
+on:
+  workflow_dispatch: 
+
+jobs:
+  build-video:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get my code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Install packages
+        run: npm install
+
+      - name: Run the factory
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node schedules/daily-automation.js
