@@ -5,25 +5,37 @@ const { google } = require('googleapis');
 async function main() {
   console.log("Starting video generation and upload...");
   
-  // 1. Generate Script
-  const apiKey = process.env.GEMINI_API_KEY;
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: "Write a 1-sentence dark psychology fact for a YouTube Short. Keep it under 20 words." }] }]
-    })
-  });
+  // Fallback script just in case Gemini fails
+  let text = "If you stay silent after someone speaks, their brain panics and forces them to confess the truth."; 
   
-  const data = await response.json();
-  const text = data.candidates[0].content.parts[0].text;
-  console.log("✅ AI Generated Script:", text);
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    console.log("Calling Gemini API...");
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: "Write a 1-sentence dark psychology fact for a YouTube Short. Keep it under 20 words." }] }]
+      })
+    });
+    
+    const data = await response.json();
+    
+    // Check if Gemini actually gave us a script
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      text = data.candidates[0].content.parts[0].text;
+      console.log("✅ AI Generated Script:", text);
+    } else {
+      console.log("⚠️ Gemini failed or was rate-limited. Using fallback script.");
+      console.log("Gemini Error:", JSON.stringify(data));
+    }
+  } catch (error) {
+    console.log("⚠️ Network Error. Using fallback script.");
+  }
   
-  // 2. Render Video
   console.log("Rendering video with FFmpeg...");
   execSync(`ffmpeg -f lavfi -i color=c=blue:s=1080x1920:d=5 -f lavfi -i anullsrc=r=44100:cl=stereo -c:v libx264 -c:a aac -shortest output.mp4`, { stdio: 'inherit' });
   
-  // 3. Upload to YouTube
   console.log("Connecting to YouTube API...");
   const oauth2Client = new google.auth.OAuth2(
     process.env.YT_CLIENT_ID,
@@ -44,7 +56,7 @@ async function main() {
         tags: ["shorts", "psychology"]
       },
       status: {
-        privacyStatus: 'unlisted', // We make it unlisted first to test
+        privacyStatus: 'unlisted',
         selfDeclaredMadeForKids: false
       }
     },
