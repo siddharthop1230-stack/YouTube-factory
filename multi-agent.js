@@ -47,13 +47,11 @@ const pexelsApiKey = process.env.PEXELS_API_KEY;
 const searchQuery = encodeURIComponent("dark cinematic abstract");
 // This fetches a random portrait video and extracts the download link
 const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
-const pexelsData = JSON.parse(pexelsResponse);
-const videoUrl = pexelsData.videos[0].video_files[0].link;
+  
 execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' });
   const imagePrompt = encodeURIComponent("Cinematic dark moody psychological thriller background, neon lights, 8k, vertical --ar 9:16");
   execSync(`curl -L "https://image.pollinations.ai/prompt/${imagePrompt}?width=1080&height=1920&nologo=true" -o bg.jpg`, { stdio: 'inherit' });
 
-  console.log("🎙️ Generating Voiceover...");
   console.log("🎙️ Generating Voiceover...");
 const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
 execSync(`curl -L "${voiceUrl}" -o voice.mp3`, { stdio: 'inherit' });
@@ -79,7 +77,7 @@ fs.writeFileSync('captions.srt', srtContent);
 
   console.log("🎬 Rendering Final Short with FFmpeg...");
   execSync(`ffmpeg -y -i voice.mp3 -ar 44100 -ac 2 clean_voice.mp3`, { stdio: 'inherit' });
-execSync(`ffmpeg -y -loop 1 -i bg.jpg -i clean_voice.mp3 -vf "scale=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.floor(safeDuration * 25)}:s=1080x1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
+execSync(`ffmpeg -y -loop 1 -i bg.mp4 -i clean_voice.mp3 -vf "scale=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.floor(safeDuration * 25)}:s=1080x1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
 
   // 5. UPLOAD TO YOUTUBE
   console.log("📤 Uploading to YouTube...");
