@@ -40,9 +40,8 @@ async function main() {
 
   // 3. GENERATE VOICEOVER (Edge-TTS - Free, No Key)
   console.log("🎙️ Generating AI Voiceover...");
-  const tts = new EdgeTTS();
-  const audioBuffer = await tts.synthesize(scriptText, "en-US-ChristopherNeural"); // Deep, authoritative male voice
-  fs.writeFileSync('voice.mp3', Buffer.from(audioBuffer));
+  const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(scriptText)}`;
+execSync(`curl -L "${voiceUrl}" -o voice.mp3`, { stdio: 'inherit' });
 
   // Get audio duration for captions
   const audioDuration = parseFloat(execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 voice.mp3`).toString());
