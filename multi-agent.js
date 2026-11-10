@@ -52,6 +52,7 @@ async function main() {
 
   console.log("💬 Generating Captions...");
   const audioDuration = parseFloat(execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 voice.mp3`).toString());
+  const words = script.split(" ");
   const safeDuration = isNaN(audioDuration) ? (words.length * 0.4) : audioDuration;
 const timePerWord = safeDuration / words.length;
 
