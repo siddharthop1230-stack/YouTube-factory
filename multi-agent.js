@@ -42,7 +42,14 @@ async function main() {
   console.log(`✅ SEO Ready: ${metadata.title}`);
 
   // 4. RENDER THE VIDEO
-  console.log("🎨 Downloading AI Visual...");
+  console.log("🎬 Downloading cinematic video background from Pexels...");
+const pexelsApiKey = process.env.PEXELS_API_KEY;
+const searchQuery = encodeURIComponent("dark cinematic abstract");
+// This fetches a random portrait video and extracts the download link
+const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
+const pexelsData = JSON.parse(pexelsResponse);
+const videoUrl = pexelsData.videos[0].video_files[0].link;
+execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' });
   const imagePrompt = encodeURIComponent("Cinematic dark moody psychological thriller background, neon lights, 8k, vertical --ar 9:16");
   execSync(`curl -L "https://image.pollinations.ai/prompt/${imagePrompt}?width=1080&height=1920&nologo=true" -o bg.jpg`, { stdio: 'inherit' });
 
