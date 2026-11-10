@@ -43,41 +43,45 @@ async function main() {
 
   // 4. RENDER THE VIDEO
   console.log("🎬 Downloading cinematic video background from Pexels...");
-const pexelsApiKey = process.env.PEXELS_API_KEY;
-const searchQuery = encodeURIComponent("dark cinematic abstract");
-// This fetches a random portrait video and extracts the download link
-const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
+  const pexelsApiKey = process.env.PEXELS_API_KEY;
+  const searchQuery = encodeURIComponent("dark cinematic abstract");
+  const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
+  const pexelsData = JSON.parse(pexelsResponse);
   
-execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' });
-  const imagePrompt = encodeURIComponent("Cinematic dark moody psychological thriller background, neon lights, 8k, vertical --ar 9:16");
-  execSync(`curl -L "https://image.pollinations.ai/prompt/${imagePrompt}?width=1080&height=1920&nologo=true" -o bg.jpg`, { stdio: 'inherit' });
+  if (!pexelsData.videos || pexelsData.videos.length === 0) {
+    console.log("🚨 Pexels failed to find a video. Check your API key.");
+    process.exit(1);
+  }
+  
+  const videoUrl = pexelsData.videos[0].video_files[0].link;
+  execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' });
 
   console.log("🎙️ Generating Voiceover...");
-const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
-execSync(`curl -L "${voiceUrl}" -o voice.mp3`, { stdio: 'inherit' });
+  const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
+  execSync(`curl -L "${voiceUrl}" -o voice.mp3`, { stdio: 'inherit' });
 
   console.log("💬 Generating Captions...");
   const audioDuration = parseFloat(execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 voice.mp3`).toString());
   const words = script.split(" ");
   const safeDuration = isNaN(audioDuration) ? (words.length * 0.4) : audioDuration;
-const timePerWord = safeDuration / words.length;
+  const timePerWord = safeDuration / words.length;
 
-function toSrtTime(seconds) {
-  const date = new Date(0);
-  date.setMilliseconds(Math.max(0, seconds * 1000));
-  return date.toISOString().substr(11, 12).replace('.', ',');
-}
+  function toSrtTime(seconds) {
+    const date = new Date(0);
+    date.setMilliseconds(Math.max(0, seconds * 1000));
+    return date.toISOString().substr(11, 12).replace('.', ',');
+  }
 
-let srtContent = "";
-words.forEach((word, i) => {
-  srtContent += `${i + 1}\n${toSrtTime(i * timePerWord)} --> ${toSrtTime((i + 1) * timePerWord)}\n${word.toUpperCase()}\n\n`;
-});
-fs.writeFileSync('captions.srt', srtContent);
-  
+  let srtContent = "";
+  words.forEach((word, i) => {
+    srtContent += `${i + 1}\n${toSrtTime(i * timePerWord)} --> ${toSrtTime((i + 1) * timePerWord)}\n${word.toUpperCase()}\n\n`;
+  });
+  fs.writeFileSync('captions.srt', srtContent);
 
   console.log("🎬 Rendering Final Short with FFmpeg...");
   execSync(`ffmpeg -y -i voice.mp3 -ar 44100 -ac 2 clean_voice.mp3`, { stdio: 'inherit' });
-execSync(`ffmpeg -y -loop 1 -i bg.mp4 -i clean_voice.mp3 -vf "scale=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.floor(safeDuration * 25)}:s=1080x1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
+  // Notice we removed -loop 1 because it's a video now, and we loop the video stream
+  execSync(`ffmpeg -y -stream_loop -1 -i bg.mp4 -i clean_voice.mp3 -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
 
   // 5. UPLOAD TO YOUTUBE
   console.log("📤 Uploading to YouTube...");
