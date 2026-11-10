@@ -6,7 +6,7 @@ async function callGemini(role, prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
   const fullPrompt = `You are a ${role}. ${prompt}`;
   
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: fullPrompt }] }] })
@@ -52,23 +52,24 @@ async function main() {
 
   console.log("💬 Generating Captions...");
   const audioDuration = parseFloat(execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 voice.mp3`).toString());
-  const words = script.split(" ");
-  const timePerWord = audioDuration / words.length;
+  const safeDuration = isNaN(audioDuration) ? (words.length * 0.4) : audioDuration;
+const timePerWord = safeDuration / words.length;
+
+function toSrtTime(seconds) {
+  const date = new Date(0);
+  date.setMilliseconds(Math.max(0, seconds * 1000));
+  return date.toISOString().substr(11, 12).replace('.', ',');
+}
+
+let srtContent = "";
+words.forEach((word, i) => {
+  srtContent += `${i + 1}\n${toSrtTime(i * timePerWord)} --> ${toSrtTime((i + 1) * timePerWord)}\n${word.toUpperCase()}\n\n`;
+});
+fs.writeFileSync('captions.srt', srtContent);
   
-  function toSrtTime(seconds) {
-    const date = new Date(0);
-    date.setMilliseconds(seconds * 1000);
-    return date.toISOString().substr(11, 12).replace('.', ',');
-  }
-  
-  let srtContent = "";
-  words.forEach((word, i) => {
-    srtContent += `${i + 1}\n${toSrtTime(i * timePerWord)} --> ${toSrtTime((i + 1) * timePerWord)}\n${word.toUpperCase()}\n\n`;
-  });
-  fs.writeFileSync('captions.srt', srtContent);
 
   console.log("🎬 Rendering Final Short with FFmpeg...");
-  execSync(`ffmpeg -loop 1 -i bg.jpg -i voice.mp3 -vf "scale=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':d=125:s=1080x1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${audioDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
+  execSync(`ffmpeg -loop 1 -i bg.jpg -i voice.mp3 -vf "scale=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.floor(safeDuration * 25)}:s=1080x1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
 
   // 5. UPLOAD TO YOUTUBE
   console.log("📤 Uploading to YouTube...");
