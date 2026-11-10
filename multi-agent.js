@@ -47,14 +47,16 @@ async function main() {
   const searchQuery = encodeURIComponent("dark background");
   const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
   const pexelsData = JSON.parse(pexelsResponse);
+  let videoUrl;
+if (!pexelsData.videos || pexelsData.videos.length === 0) {
+  console.log("⚠️ Pexels failed or key is wrong. Using backup cinematic video...");
+  videoUrl = "https://github.com/google/material-design-icons/raw/master/video/mp4/background.mp4"; // Backup video
+} else {
+  videoUrl = pexelsData.videos[0].video_files[0].link;
+}
+ execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' }); 
   
-  if (!pexelsData.videos || pexelsData.videos.length === 0) {
-    console.log("🚨 Pexels failed to find a video. Check your API key.");
-    process.exit(1);
-  }
-  
-  const videoUrl = pexelsData.videos[0].video_files[0].link;
-  execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' });
+ 
 
   console.log("🎙️ Generating Voiceover...");
   const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
