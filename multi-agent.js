@@ -47,8 +47,9 @@ async function main() {
   execSync(`curl -L "https://image.pollinations.ai/prompt/${imagePrompt}?width=1080&height=1920&nologo=true" -o bg.jpg`, { stdio: 'inherit' });
 
   console.log("🎙️ Generating Voiceover...");
-  const voiceUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Matthew&text=${encodeURIComponent(script)}`;
-  execSync(`curl -L "${voiceUrl}" -o voice.mp3`, { stdio: 'inherit' });
+  console.log("🎙️ Generating Voiceover...");
+const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
+execSync(`curl -L "${voiceUrl}" -o voice.mp3`, { stdio: 'inherit' });
 
   console.log("💬 Generating Captions...");
   const audioDuration = parseFloat(execSync(`ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 voice.mp3`).toString());
@@ -70,7 +71,8 @@ fs.writeFileSync('captions.srt', srtContent);
   
 
   console.log("🎬 Rendering Final Short with FFmpeg...");
-  execSync(`ffmpeg -loop 1 -i bg.jpg -i voice.mp3 -vf "scale=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.floor(safeDuration * 25)}:s=1080x1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
+  execSync(`ffmpeg -y -i voice.mp3 -ar 44100 -ac 2 clean_voice.mp3`, { stdio: 'inherit' });
+execSync(`ffmpeg -y -loop 1 -i bg.jpg -i clean_voice.mp3 -vf "scale=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':d=${Math.floor(safeDuration * 25)}:s=1080x1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
 
   // 5. UPLOAD TO YOUTUBE
   console.log("📤 Uploading to YouTube...");
