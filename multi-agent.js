@@ -47,7 +47,7 @@ async function main() {
   execSync(`curl -L "https://image.pollinations.ai/prompt/${imagePrompt}?width=1080&height=1920&nologo=true" -o bg.jpg`, { stdio: 'inherit' });
 
   console.log("🎙️ Generating Voiceover...");
-  const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
+  const voiceUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Matthew&text=${encodeURIComponent(script)}`;
   execSync(`curl -L "${voiceUrl}" -o voice.mp3`, { stdio: 'inherit' });
 
   console.log("💬 Generating Captions...");
