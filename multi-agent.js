@@ -42,21 +42,26 @@ async function main() {
   console.log(`✅ SEO Ready: ${metadata.title}`);
 
   // 4. RENDER THE VIDEO
-  console.log("🎬 Downloading cinematic video background from Pexels...");
-  const pexelsApiKey = process.env.PEXELS_API_KEY;
-  const searchQuery = encodeURIComponent("dark background");
-  const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
-  const pexelsData = JSON.parse(pexelsResponse);
-  let videoUrl;
-if (!pexelsData.videos || pexelsData.videos.length === 0) {
-  console.log("⚠️ Pexels failed or key is wrong. Using backup cinematic video...");
-  videoUrl = "https://github.com/google/material-design-icons/raw/master/video/mp4/background.mp4"; // Backup video
-} else {
-  videoUrl = pexelsData.videos[0].video_files[0].link;
-}
- execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' }); 
+  console.log("🎬 Downloading cinematic video background...");
+  let videoUrl = "https://cdn.pixabay.com/video/2022/12/11/143007-780512250_large.mp4"; // REAL BACKUP VIDEO
   
- 
+  try {
+    const pexelsApiKey = process.env.PEXELS_API_KEY;
+    const searchQuery = encodeURIComponent("dark cinematic abstract");
+    const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
+    const pexelsData = JSON.parse(pexelsResponse);
+    
+    if (pexelsData.videos && pexelsData.videos.length > 0) {
+      videoUrl = pexelsData.videos[0].video_files[0].link;
+      console.log("✅ Using Pexels video.");
+    } else {
+      console.log("⚠️ Pexels failed, using backup video.");
+    }
+  } catch (err) {
+    console.log("⚠️ Pexels API failed, using backup video.");
+  }
+
+  execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' });
 
   console.log("🎙️ Generating Voiceover...");
   const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
@@ -82,7 +87,6 @@ if (!pexelsData.videos || pexelsData.videos.length === 0) {
 
   console.log("🎬 Rendering Final Short with FFmpeg...");
   execSync(`ffmpeg -y -i voice.mp3 -ar 44100 -ac 2 clean_voice.mp3`, { stdio: 'inherit' });
-  // Notice we removed -loop 1 because it's a video now, and we loop the video stream
   execSync(`ffmpeg -y -stream_loop -1 -i bg.mp4 -i clean_voice.mp3 -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,subtitles=captions.srt:force_style='FontName=Arial,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,Shadow=0,MarginV=100'" -c:v libx264 -t ${safeDuration} -pix_fmt yuv420p -c:a aac -shortest final_short.mp4`, { stdio: 'inherit' });
 
   // 5. UPLOAD TO YOUTUBE
