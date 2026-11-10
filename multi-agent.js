@@ -44,7 +44,7 @@ async function main() {
   // 4. RENDER THE VIDEO
   console.log("🎬 Downloading cinematic video background from Pexels...");
   const pexelsApiKey = process.env.PEXELS_API_KEY;
-  const searchQuery = encodeURIComponent("dark cinematic abstract");
+  const searchQuery = encodeURIComponent("dark background");
   const pexelsResponse = execSync(`curl -s -H "Authorization: ${pexelsApiKey}" "https://api.pexels.com/videos/search?query=${searchQuery}&orientation=portrait&per_page=1"`).toString();
   const pexelsData = JSON.parse(pexelsResponse);
   
