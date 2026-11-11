@@ -43,7 +43,12 @@ async function main() {
 
   // 4. RENDER THE VIDEO
   console.log("🎬 Downloading cinematic video background...");
-  let videoUrl = "https://cdn.pixabay.com/video/2022/12/11/143007-780512250_large.mp4"; // REAL BACKUP VIDEO
+  // Backup videos (free, public, verified 200 video/mp4). Tried in order if download fails.
+  const backupVideoUrls = [
+    "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
+    "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4"
+  ];
+  let videoUrl = backupVideoUrls[0];
   
   try {
     const pexelsApiKey = process.env.PEXELS_API_KEY;
@@ -61,7 +66,26 @@ async function main() {
     console.log("⚠️ Pexels API failed, using backup video.");
   }
 
-  execSync(`curl -L "${videoUrl}" -o bg.mp4`, { stdio: 'inherit' });
+  // Try the primary URL (Pexels or backup 1), then fall back to the remaining backups.
+  const videoCandidates = [videoUrl, ...backupVideoUrls.filter(u => u !== videoUrl)];
+  let videoDownloaded = false;
+  if (fs.existsSync('bg.mp4')) fs.unlinkSync('bg.mp4'); // avoid accepting a stale file
+  for (const candidate of videoCandidates) {
+    try {
+      execSync(`curl -f -L --retry 2 -m 120 "${candidate}" -o bg.mp4`, { stdio: 'inherit' });
+      if (fs.existsSync('bg.mp4') && fs.statSync('bg.mp4').size > 10000) {
+        console.log(`✅ Background video downloaded from: ${candidate}`);
+        videoDownloaded = true;
+        break;
+      }
+      console.log(`⚠️ Download from ${candidate} was empty, trying next.`);
+    } catch (err) {
+      console.log(`⚠️ Download failed from ${candidate}, trying next backup.`);
+    }
+  }
+  if (!videoDownloaded) {
+    throw new Error("All background video sources failed. Aborting render.");
+  }
 
   console.log("🎙️ Generating Voiceover...");
   const voiceUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(script)}`;
